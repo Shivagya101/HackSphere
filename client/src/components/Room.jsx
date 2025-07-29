@@ -22,6 +22,42 @@ function Room() {
   const fileInputRef = useRef(null);
   const [timerStatus, setTimerStatus] = useState('paused');
   const [timerLastUpdateBy, setTimerLastUpdateBy] = useState('');
+  const [hasJoined, setHasJoined] = useState(false);
+  const [dataLoaded, setDataLoaded] = useState(false);
+  const [timerAlertShown, setTimerAlertShown] = useState(false);
+
+  const saveRoomToHistory = async (roomId) => {
+    try {
+      const token = localStorage.getItem('authToken');
+      if (!token) return;
+
+      const response = await fetch('http://localhost:3000/auth/me', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        const userData = await response.json();
+        console.log('Saving room to history:', { roomId, userId: userData.id });
+        
+        // Call the backend to save room to history
+        await fetch('http://localhost:3000/room/join', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            roomId,
+            password: 'history-save', // Dummy password for history save
+            userId: userData.id
+          })
+        });
+      }
+    } catch (error) {
+      console.error('Error saving room to history:', error);
+    }
+  };
 
   const checkRoomExists = async () => {
     try {
@@ -34,6 +70,40 @@ function Room() {
     } catch (error) {
       console.error('Room check error:', error);
       return false;
+    }
+  };
+
+  const fetchRoomData = async () => {
+    try {
+      console.log('Fetching room data directly for:', roomId);
+      
+      // Fetch messages
+      const messagesResponse = await fetch(`http://localhost:3000/messages/${roomId}`);
+      if (messagesResponse.ok) {
+        const messages = await messagesResponse.json();
+        console.log('Fetched messages:', messages.length);
+        setMessages(messages);
+      }
+
+      // Fetch notes
+      const notesResponse = await fetch(`http://localhost:3000/notes/${roomId}`);
+      if (notesResponse.ok) {
+        const notes = await notesResponse.json();
+        console.log('Fetched notes:', notes.length);
+        setNotes(notes);
+      }
+
+      // Fetch files
+      const filesResponse = await fetch(`http://localhost:3000/files/${roomId}`);
+      if (filesResponse.ok) {
+        const files = await filesResponse.json();
+        console.log('Fetched files:', files.length);
+        setFiles(files);
+      }
+
+      setDataLoaded(true);
+    } catch (error) {
+      console.error('Error fetching room data:', error);
     }
   };
 
@@ -73,6 +143,11 @@ function Room() {
     }
   };
 
+  // Fetch data immediately when component mounts
+  useEffect(() => {
+    fetchRoomData();
+  }, [roomId]);
+
   useEffect(() => {
     // check username and roomid in localStorage
     const storedUsername = localStorage.getItem('username');
@@ -84,6 +159,11 @@ function Room() {
     }
 
     const joinRoom = async () => {
+      if (hasJoined) {
+        console.log('Already joined room, skipping...');
+        return;
+      }
+
       const roomExists = await checkRoomExists();
       
       if (!roomExists) {
@@ -92,12 +172,16 @@ function Room() {
       }
 
       setUsername(storedUsername);
+      setHasJoined(true);
      
       socket.on('room:joined', ({ isNewRoom: newRoom }) => {
+        console.log('Room joined event received:', { isNewRoom: newRoom });
         setIsNewRoom(newRoom);
         if (newRoom) {
           alert('Welcome! You are the first person to join this room.');
         }
+        // Don't save to history here - it will be saved when joining via password
+        // saveRoomToHistory(roomId);
       });
 
       socket.on('joinRoom:error', (error) => {
@@ -106,11 +190,14 @@ function Room() {
         navigate('/');
       });
 
+      console.log('Socket event listeners set up for room:', roomId);
+
       socket.on('message', (msg) => {
         setMessages(prev => addMessageWithFilter(msg, prev));
       });
 
       socket.on('message:history', (history) => {
+        console.log('Received message history:', history);
         const filteredHistory = history.reduce((acc, msg) => {
           return addMessageWithFilter(msg, acc);
         }, []);
@@ -122,6 +209,7 @@ function Room() {
       });
 
       socket.on('notes:history', (history) => {
+        console.log('Received notes history:', history);
         setNotes(history);
       });
 
@@ -138,6 +226,7 @@ function Room() {
       });
 
       socket.on('files:list', (filesList) => {
+        console.log('Received files list:', filesList);
         setFiles(filesList);
       });
 
@@ -155,13 +244,20 @@ function Room() {
           setTimerStatus(updatedTimer.status || 'paused');
           setTimerLastUpdateBy(updatedTimer.lastUpdateBy || '');
           if (updatedTimer.status === 'ended') {
-            setShowTimerEndAlert(true);
-            playNotificationSound();
+            // Check if alert was already shown for this timer session
+            const alertAlreadyShown = localStorage.getItem(`timerAlertShown_${roomId}`) === 'true';
+            if (!alertAlreadyShown) {
+              setShowTimerEndAlert(true);
+              setTimerAlertShown(true);
+              localStorage.setItem(`timerAlertShown_${roomId}`, 'true');
+              playNotificationSound();
+            }
           }
         }
       });
 
    
+      console.log('Emitting joinRoom:', { roomId, username: storedUsername });
       socket.emit('joinRoom', {
         roomId,
         username: storedUsername
@@ -170,8 +266,11 @@ function Room() {
 
     joinRoom();
 
-    // manual cleanup :<
+    // Clean up socket listeners
     return () => {
+      console.log('Cleaning up socket listeners');
+      setHasJoined(false);
+      // Don't reset timerAlertShown here as it should persist across room changes
       socket.off('room:joined');
       socket.off('joinRoom:error');
       socket.off('message');
@@ -202,18 +301,18 @@ function Room() {
     
     socket.emit('timer:set', { roomId, totalSeconds });
     setShowTimerEndAlert(false);
+    setTimerAlertShown(false);
+    localStorage.removeItem(`timerAlertShown_${roomId}`);
   };
 
   const startTimer = () => {
     socket.emit('timer:start', { roomId });
   };
 
-  const pauseTimer = () => {
-    socket.emit('timer:pause', { roomId });
-  };
-
   const resetTimer = () => {
     socket.emit('timer:reset', { roomId });
+    setTimerAlertShown(false);
+    localStorage.removeItem(`timerAlertShown_${roomId}`);
   };
 
   const sendMessage = (e) => {
@@ -240,11 +339,7 @@ function Room() {
     return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
-  const leaveRoom = () => {
-    localStorage.removeItem('username');
-    localStorage.removeItem('roomId');
-    navigate('/');
-  };
+
 
   const formatTimestamp = (timestamp) => {
     if (!timestamp) return '';
@@ -580,12 +675,6 @@ function Room() {
             <h1 className="text-2xl font-bold">Room: {roomId}</h1>
             <span className="text-gray-600">Joined as: {username}</span>
           </div>
-          <button
-            onClick={leaveRoom}
-            className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
-          >
-            Leave Room
-          </button>
         </div>
         
         {/* Timer End Alert */}
@@ -596,7 +685,11 @@ function Room() {
               <h2 className="text-2xl font-bold text-red-600 mb-4">Time's Up!</h2>
               <p className="text-gray-700 mb-4">The timer has ended.</p>
               <button
-                onClick={() => setShowTimerEndAlert(false)}
+                onClick={() => {
+                  setShowTimerEndAlert(false);
+                  setTimerAlertShown(true);
+                  localStorage.setItem(`timerAlertShown_${roomId}`, 'true');
+                }}
                 className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
               >
                 Close
@@ -672,30 +765,25 @@ function Room() {
               >
                 Set Time
               </button>
-              <button
-                onClick={startTimer}
-                className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 disabled:opacity-50"
-                disabled={timerStatus === 'running' || time === 0}
-                title="Start the timer"
-              >
-                Start
-              </button>
-              <button
-                onClick={pauseTimer}
-                className="bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600 disabled:opacity-50"
-                disabled={timerStatus !== 'running'}
-                title="Pause the timer"
-              >
-                Pause
-              </button>
-              <button
-                onClick={resetTimer}
-                className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 disabled:opacity-50"
-                disabled={time === 0}
-                title="Reset the timer"
-              >
-                Reset
-              </button>
+              {timerStatus === 'running' ? (
+                <button
+                  onClick={resetTimer}
+                  className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 disabled:opacity-50"
+                  disabled={time === 0}
+                  title="Reset the timer"
+                >
+                  Reset
+                </button>
+              ) : (
+                <button
+                  onClick={startTimer}
+                  className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 disabled:opacity-50"
+                  disabled={time === 0}
+                  title="Start the timer"
+                >
+                  Start
+                </button>
+              )}
             </div>
           </div>
         </div>

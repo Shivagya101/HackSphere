@@ -3,6 +3,7 @@ import mongoose from 'mongoose';
 const fileSchema = new mongoose.Schema({
   filename: String,
   originalName: String,
+  path: String,  // Add path field for physical file location
   roomId: String,
   uploadedBy: String,
   fileId: mongoose.Types.ObjectId,

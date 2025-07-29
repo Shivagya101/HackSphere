@@ -2,6 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Home from './components/Home';
 import Room from './components/Room';
+import Login from './components/Login';
+import AuthCallback from './components/AuthCallback';
+import RoomHistory from './components/RoomHistory';
 import Navbar from "./components/layout/Navbar";
 import Footer from "./components/layout/Footer";
 import socket from './socket';
@@ -46,6 +49,9 @@ function App() {
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/room/:roomId" element={<Room />} />
+                    <Route path="/login" element={<Login />} />
+        <Route path="/auth/callback" element={<AuthCallback />} />
+        <Route path="/history" element={<RoomHistory />} />
           </Routes>
         </main>
         <Footer />

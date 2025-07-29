@@ -30,9 +30,13 @@ const initSocketHandlers = (io) => {
     });
 
     socket.on('joinRoom', async ({ roomId, username }) => {
+      console.log('🔌 joinRoom request received:', { roomId, username, socketId: socket.id });
       try {
         const existing = rooms.get(roomId)?.get(socket.id);
-        if (existing === username) return;
+        if (existing === username) {
+          console.log('User already in room, skipping...');
+          return;
+        }
 
         const isNewRoom =
           !rooms.has(roomId) &&
@@ -57,20 +61,25 @@ const initSocketHandlers = (io) => {
         usernames.get(roomId).add(username);
 
         socket.emit('room:joined', { isNewRoom });
+        console.log('✅ Room joined event sent to client');
 
         const messages = await Message.find({ roomId }).sort({ timestamp: 1 }).limit(100);
+        console.log('📨 Sending message history:', messages.length, 'messages');
         socket.emit('message:history', messages);
 
         const notes = await Note.find({ roomId }).sort({ timestamp: -1 });
+        console.log('📝 Sending notes history:', notes.length, 'notes');
         socket.emit('notes:history', notes);
 
         let timer = await Timer.findOne({ roomId });
         if (!timer) {
           timer = await createTimer(roomId, socket.id);
         }
+        console.log('⏰ Sending timer update');
         socket.emit('timer:update', timer);
 
         const files = await File.find({ roomId }).sort({ uploadDate: -1 });
+        console.log('📁 Sending files list:', files.length, 'files');
         socket.emit('files:list', files);
 
         const systemMessage = new Message({
