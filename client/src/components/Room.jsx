@@ -26,6 +26,11 @@ function Room() {
   const [dataLoaded, setDataLoaded] = useState(false);
   const [timerAlertShown, setTimerAlertShown] = useState(false);
   const [roomInfo, setRoomInfo] = useState(null);
+  const [commits, setCommits] = useState([]);
+  const [loadingCommits, setLoadingCommits] = useState(false);
+  const [branches, setBranches] = useState([]);
+  const [selectedBranch, setSelectedBranch] = useState('main');
+  const [loadingBranches, setLoadingBranches] = useState(false);
 
   const saveRoomToHistory = async (roomId) => {
     try {
@@ -80,8 +85,9 @@ function Room() {
       
       // Fetch room information
       const roomResponse = await fetch(`http://localhost:3000/room/${roomId}`);
+      let roomData = null;
       if (roomResponse.ok) {
-        const roomData = await roomResponse.json();
+        roomData = await roomResponse.json();
         console.log('Fetched room info:', roomData);
         setRoomInfo(roomData);
       }
@@ -108,6 +114,14 @@ function Room() {
         const files = await filesResponse.json();
         console.log('Fetched files:', files.length);
         setFiles(files);
+      }
+
+      // Fetch branches if repository is linked (commits will be fetched after branch selection)
+      if (roomData && roomData.githubRepo) {
+        console.log('Room has GitHub repo:', roomData.githubRepo);
+        await fetchBranches(roomData.githubRepo);
+      } else {
+        console.log('No GitHub repo linked to this room');
       }
 
       setDataLoaded(true);
@@ -356,6 +370,24 @@ function Room() {
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
+  const formatCommitDate = (dateString) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInMinutes = Math.floor((now - date) / (1000 * 60));
+    
+    if (diffInMinutes < 1) return 'Just now';
+    if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
+    if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h ago`;
+    return date.toLocaleDateString();
+  };
+
+  const handleBranchChange = async (newBranch) => {
+    setSelectedBranch(newBranch);
+    if (roomInfo?.githubRepo) {
+      await fetchCommits(roomInfo.githubRepo, newBranch);
+    }
+  };
+
   const handleAddNote = (e) => {
     e.preventDefault();
     if (newNote.trim()) {
@@ -382,6 +414,92 @@ function Room() {
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  const fetchBranches = async (repoUrl) => {
+    try {
+      setLoadingBranches(true);
+      const token = localStorage.getItem('authToken');
+      const encodedUrl = encodeURIComponent(repoUrl);
+      
+      console.log('Fetching branches for URL:', repoUrl);
+      console.log('Encoded URL:', encodedUrl);
+      
+      const response = await fetch(`http://localhost:3000/github/branches/${encodedUrl}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      console.log('Branches response status:', response.status);
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Branches data:', data);
+        setBranches(data.branches || []);
+        // Set the first branch as selected if we have branches
+        if (data.branches && data.branches.length > 0) {
+          const firstBranch = data.branches[0].name;
+          setSelectedBranch(firstBranch);
+          console.log('Selected branch:', firstBranch);
+          // Fetch commits for the selected branch immediately
+          await fetchCommits(repoUrl, firstBranch);
+        }
+      } else {
+        const errorData = await response.json().catch(() => ({ error: 'Failed to parse error response' }));
+        console.error('Failed to fetch branches:', errorData);
+        setBranches([]);
+      }
+    } catch (error) {
+      console.error('Error fetching branches:', error);
+      setBranches([]);
+    } finally {
+      setLoadingBranches(false);
+    }
+  };
+
+  const fetchCommits = async (repoUrl, branch = null) => {
+    try {
+      setLoadingCommits(true);
+      const token = localStorage.getItem('authToken');
+      const encodedUrl = encodeURIComponent(repoUrl);
+      const branchParam = branch || selectedBranch;
+      
+      console.log('Fetching commits for URL:', repoUrl);
+      console.log('Branch:', branchParam);
+      console.log('Encoded URL:', encodedUrl);
+      
+      const response = await fetch(`http://localhost:3000/github/commits/${encodedUrl}/${branchParam}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      console.log('Commits response status:', response.status);
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Commits data:', data);
+        setCommits(data.commits || []);
+      } else {
+        const errorData = await response.json().catch(() => ({ error: 'Failed to parse error response' }));
+        console.error('Failed to fetch commits:', errorData);
+        
+        // If it's a 404 and we're trying the default branch, try the first available branch
+        if (response.status === 404 && branchParam === 'main' && branches.length > 0) {
+          console.log('Branch "main" not found, trying first available branch:', branches[0].name);
+          await fetchCommits(repoUrl, branches[0].name);
+          return;
+        }
+        
+        setCommits([]);
+      }
+    } catch (error) {
+      console.error('Error fetching commits:', error);
+      setCommits([]);
+    } finally {
+      setLoadingCommits(false);
+    }
   };
 
   const handleFileDownload = async (fileId, originalName) => {
@@ -712,10 +830,10 @@ function Room() {
           </div>
         )}
         
-        {/* Timer Section */}
+        {/* Timer and Commits Section */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-4">
           <div className="flex justify-between items-start mb-4">
-            <h2 className="text-2xl font-bold">Timer</h2>
+            <h2 className="text-xl font-bold">Timer</h2>
             {roomInfo?.githubRepo && (
               <a
                 href={roomInfo.githubRepo}
@@ -734,89 +852,200 @@ function Room() {
               </a>
             )}
           </div>
-          <div className="flex flex-col items-center w-full">
-            <div className="text-5xl font-mono text-center mb-2">
-              {formatTime(time)}
+          
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Timer Section */}
+            <div className="lg:col-span-1">
+              <div className="flex flex-col items-center">
+                <div className="text-4xl font-mono text-center mb-2">
+                  {formatTime(time)}
+                </div>
+                <span className={`text-sm font-semibold px-2 py-1 rounded mb-2 ${
+                  time === 0
+                    ? 'bg-red-100 text-red-700'
+                    : timerStatus === 'running'
+                    ? 'bg-green-100 text-green-700'
+                    : timerStatus === 'paused'
+                    ? 'bg-yellow-100 text-yellow-700'
+                    : 'bg-gray-100 text-gray-700'
+                }`}>
+                  {time === 0 ? 'Ended' : timerStatus.charAt(0).toUpperCase() + timerStatus.slice(1)}
+                </span>
+                
+                <div className="flex justify-center space-x-2 mb-4 w-full">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Hours</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={hours}
+                      onChange={(e) => setHours(e.target.value)}
+                      className="w-16 px-2 py-1 border rounded text-center"
+                      placeholder="0"
+                      aria-label="Hours"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Minutes</label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="59"
+                      value={minutes}
+                      onChange={(e) => setMinutes(e.target.value)}
+                      className="w-16 px-2 py-1 border rounded text-center"
+                      placeholder="0"
+                      aria-label="Minutes"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Seconds</label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="59"
+                      value={seconds}
+                      onChange={(e) => setSeconds(e.target.value)}
+                      className="w-16 px-2 py-1 border rounded text-center"
+                      placeholder="0"
+                      aria-label="Seconds"
+                    />
+                  </div>
+                </div>
+                <div className="flex justify-center space-x-2 w-full">
+                  <button
+                    onClick={handleSetTime}
+                    className="bg-blue-500 text-white px-3 py-1.5 rounded hover:bg-blue-600 disabled:opacity-50 text-sm"
+                    disabled={timerStatus === 'running'}
+                    title="Set timer duration"
+                  >
+                    Set Time
+                  </button>
+                  {timerStatus === 'running' ? (
+                    <button
+                      onClick={resetTimer}
+                      className="bg-red-500 text-white px-3 py-1.5 rounded hover:bg-red-600 disabled:opacity-50 text-sm"
+                      disabled={time === 0}
+                      title="Reset the timer"
+                    >
+                      Reset
+                    </button>
+                  ) : (
+                    <button
+                      onClick={startTimer}
+                      className="bg-green-500 text-white px-3 py-1.5 rounded hover:bg-green-600 disabled:opacity-50 text-sm"
+                      title="Start the timer"
+                    >
+                      Start
+                    </button>
+                  )}
+                </div>
+              </div>
             </div>
-            <span className={`text-sm font-semibold px-2 py-1 rounded mb-2 ${
-              time === 0
-                ? 'bg-red-100 text-red-700'
-                : timerStatus === 'running'
-                ? 'bg-green-100 text-green-700'
-                : timerStatus === 'paused'
-                ? 'bg-yellow-100 text-yellow-700'
-                : 'bg-gray-100 text-gray-700'
-            }`}>
-              {time === 0 ? 'Ended' : timerStatus.charAt(0).toUpperCase() + timerStatus.slice(1)}
-            </span>
-            <div className="flex justify-center space-x-2 mb-4 w-full">
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Hours</label>
-                <input
-                  type="number"
-                  min="0"
-                  value={hours}
-                  onChange={(e) => setHours(e.target.value)}
-                  className="w-16 px-2 py-1 border rounded text-center"
-                  placeholder="0"
-                  aria-label="Hours"
-                />
+
+            {/* Commits Section */}
+            <div className="lg:col-span-2">
+              <div className="bg-gray-50 rounded-lg p-4 h-full">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-lg font-semibold text-gray-800">Latest Commits</h3>
+                  <div className="flex items-center space-x-2">
+                    {roomInfo?.githubRepo && branches.length > 0 && (
+                      <select
+                        value={selectedBranch}
+                        onChange={(e) => handleBranchChange(e.target.value)}
+                        disabled={loadingBranches}
+                        className="text-sm border border-gray-300 rounded px-2 py-1 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        {loadingBranches ? (
+                          <option>Loading branches...</option>
+                        ) : (
+                          branches.map((branch) => (
+                            <option key={branch.name} value={branch.name}>
+                              {branch.name}
+                            </option>
+                          ))
+                        )}
+                      </select>
+                    )}
+                    {roomInfo?.githubRepo && (
+                      <button
+                        onClick={() => fetchCommits(roomInfo.githubRepo)}
+                        disabled={loadingCommits}
+                        className="text-blue-600 hover:text-blue-800 text-sm font-medium disabled:opacity-50"
+                      >
+                        {loadingCommits ? 'Refreshing...' : 'Refresh'}
+                      </button>
+                    )}
+                  </div>
+                </div>
+                
+                {loadingCommits ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mr-2"></div>
+                    <span className="text-gray-600">Loading commits...</span>
+                  </div>
+                ) : commits.length > 0 ? (
+                  <div className="space-y-3 max-h-64 overflow-y-auto">
+                    {commits.map((commit, index) => (
+                      <div key={index} className="bg-white rounded-lg p-3 border border-gray-200 hover:border-gray-300 transition-colors">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center space-x-2 mb-1">
+                              <span className="text-xs font-mono bg-gray-100 text-gray-700 px-2 py-1 rounded">
+                                {commit.sha}
+                              </span>
+                              <span className="text-xs text-gray-500">
+                                {formatCommitDate(commit.date)}
+                              </span>
+                            </div>
+                            <p className="text-sm text-gray-800 font-medium truncate">
+                              {commit.message}
+                            </p>
+                            <p className="text-xs text-gray-500 mt-1">
+                              by {commit.author}
+                            </p>
+                          </div>
+                          <a
+                            href={commit.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="ml-2 text-blue-600 hover:text-blue-800"
+                            title="View commit on GitHub"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
+                            </svg>
+                          </a>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : roomInfo?.githubRepo && branches.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    <svg className="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                    </svg>
+                    <p className="text-sm">No branches found</p>
+                    <p className="text-xs text-gray-400 mt-1">Create a branch to see commits here</p>
+                  </div>
+                ) : roomInfo?.githubRepo ? (
+                  <div className="text-center py-8 text-gray-500">
+                    <svg className="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
+                    <p className="text-sm">No commits found</p>
+                    <p className="text-xs text-gray-400 mt-1">Make your first commit to see it here</p>
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    <svg className="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
+                    </svg>
+                    <p className="text-sm">No repository linked</p>
+                    <p className="text-xs text-gray-400 mt-1">Link a repository to see commits here</p>
+                  </div>
+                )}
               </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Minutes</label>
-                <input
-                  type="number"
-                  min="0"
-                  max="59"
-                  value={minutes}
-                  onChange={(e) => setMinutes(e.target.value)}
-                  className="w-16 px-2 py-1 border rounded text-center"
-                  placeholder="0"
-                  aria-label="Minutes"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Seconds</label>
-                <input
-                  type="number"
-                  min="0"
-                  max="59"
-                  value={seconds}
-                  onChange={(e) => setSeconds(e.target.value)}
-                  className="w-16 px-2 py-1 border rounded text-center"
-                  placeholder="0"
-                  aria-label="Seconds"
-                />
-              </div>
-            </div>
-            <div className="flex justify-center space-x-2 w-full">
-              <button
-                onClick={handleSetTime}
-                className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 disabled:opacity-50"
-                disabled={timerStatus === 'running'}
-                title="Set timer duration"
-              >
-                Set Time
-              </button>
-              {timerStatus === 'running' ? (
-                <button
-                  onClick={resetTimer}
-                  className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 disabled:opacity-50"
-                  disabled={time === 0}
-                  title="Reset the timer"
-                >
-                  Reset
-                </button>
-              ) : (
-                <button
-                  onClick={startTimer}
-                  className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 disabled:opacity-50"
-                  disabled={time === 0}
-                  title="Start the timer"
-                >
-                  Start
-                </button>
-              )}
             </div>
           </div>
         </div>

@@ -36,6 +36,46 @@ router.get('/room/:roomId', async (req, res) => {
 router.post('/room/create', createRoom);
 router.post('/room/join', joinRoom);
 
+// Test GitHub API connection
+router.get('/github/test', async (req, res) => {
+  try {
+    console.log('Testing GitHub API connection...');
+    console.log('GITHUB_ACCESS_TOKEN exists:', !!process.env.GITHUB_ACCESS_TOKEN);
+    
+    const response = await fetch('https://api.github.com/user', {
+      headers: {
+        'Authorization': `token ${process.env.GITHUB_ACCESS_TOKEN}`,
+        'Accept': 'application/vnd.github.v3+json'
+      }
+    });
+
+    console.log('GitHub API test response status:', response.status);
+    
+    if (response.ok) {
+      const userData = await response.json();
+      res.json({ 
+        success: true, 
+        message: 'GitHub API connection successful',
+        user: userData.login
+      });
+    } else {
+      const errorText = await response.text();
+      res.status(response.status).json({ 
+        success: false, 
+        error: `GitHub API error: ${response.status}`,
+        details: errorText
+      });
+    }
+  } catch (error) {
+    console.error('GitHub API test error:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Failed to test GitHub API connection',
+      details: error.message
+    });
+  }
+});
+
 // Get user's GitHub repositories
 router.get('/github/repos', async (req, res) => {
   try {
@@ -96,7 +136,7 @@ router.get('/github/repos', async (req, res) => {
   }
 });
 
-// Create a new GitHub repository
+  // Create a new GitHub repository
 router.post('/github/create-repo', async (req, res) => {
   try {
     const token = req.headers.authorization?.replace('Bearer ', '');
@@ -162,6 +202,187 @@ router.post('/github/create-repo', async (req, res) => {
     res.status(500).json({ 
       error: 'Failed to create GitHub repository. Please try again or use a manual URL.',
       useCustomUrl: true
+    });
+  }
+});
+
+// Get branches from a GitHub repository
+router.get('/github/branches/:repoUrl', async (req, res) => {
+  try {
+    const { repoUrl } = req.params;
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    
+    if (!token) {
+      return res.status(401).json({ error: 'No token provided' });
+    }
+
+    // Extract owner and repo from the URL
+    const urlMatch = repoUrl.match(/https:\/\/github\.com\/([^\/]+)\/([^\/]+)/);
+    if (!urlMatch) {
+      return res.status(400).json({ error: 'Invalid GitHub repository URL' });
+    }
+
+    const [, owner, repo] = urlMatch;
+    
+    console.log('Fetching branches for:', { owner, repo });
+    
+    // Fetch branches from GitHub API
+    const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/branches`, {
+      headers: {
+        'Authorization': `token ${process.env.GITHUB_ACCESS_TOKEN}`,
+        'Accept': 'application/vnd.github.v3+json'
+      }
+    });
+
+    console.log('GitHub API response status:', response.status);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('GitHub API error response:', errorText);
+      
+      if (response.status === 404) {
+        return res.status(404).json({ error: 'Repository not found or access denied' });
+      }
+      if (response.status === 401) {
+        return res.status(401).json({ error: 'GitHub access token is invalid or expired' });
+      }
+      throw new Error(`GitHub API error: ${response.status} - ${errorText}`);
+    }
+
+    const branches = await response.json();
+    console.log('Fetched branches:', branches.length);
+    
+    const formattedBranches = branches.map(branch => ({
+      name: branch.name,
+      commit: {
+        sha: branch.commit.sha.substring(0, 7),
+        url: branch.commit.url
+      }
+    }));
+
+    res.json({ branches: formattedBranches });
+  } catch (error) {
+    console.error('Error fetching GitHub branches:', error);
+    res.status(500).json({ 
+      error: 'Failed to fetch repository branches',
+      branches: []
+    });
+  }
+});
+
+// Get latest commits from a specific branch in a GitHub repository
+router.get('/github/commits/:repoUrl/:branch', async (req, res) => {
+  try {
+    const { repoUrl, branch } = req.params;
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    
+    if (!token) {
+      return res.status(401).json({ error: 'No token provided' });
+    }
+
+    // Extract owner and repo from the URL
+    const urlMatch = repoUrl.match(/https:\/\/github\.com\/([^\/]+)\/([^\/]+)/);
+    if (!urlMatch) {
+      return res.status(400).json({ error: 'Invalid GitHub repository URL' });
+    }
+
+    const [, owner, repo] = urlMatch;
+    
+    console.log('Fetching commits for:', { owner, repo, branch });
+    
+    // Fetch commits from specific branch
+    const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/commits?sha=${branch}&per_page=5`, {
+      headers: {
+        'Authorization': `token ${process.env.GITHUB_ACCESS_TOKEN}`,
+        'Accept': 'application/vnd.github.v3+json'
+      }
+    });
+
+    console.log('GitHub API response status:', response.status);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('GitHub API error response:', errorText);
+      
+      if (response.status === 404) {
+        return res.status(404).json({ error: 'Repository or branch not found' });
+      }
+      if (response.status === 401) {
+        return res.status(401).json({ error: 'GitHub access token is invalid or expired' });
+      }
+      throw new Error(`GitHub API error: ${response.status} - ${errorText}`);
+    }
+
+    const commits = await response.json();
+    console.log('Fetched commits:', commits.length);
+    
+    const formattedCommits = commits.map(commit => ({
+      sha: commit.sha.substring(0, 7),
+      message: commit.commit.message,
+      author: commit.commit.author.name,
+      date: commit.commit.author.date,
+      url: commit.html_url
+    }));
+
+    res.json({ commits: formattedCommits });
+  } catch (error) {
+    console.error('Error fetching GitHub commits:', error);
+    res.status(500).json({ 
+      error: 'Failed to fetch repository commits',
+      commits: []
+    });
+  }
+});
+
+// Get latest commits from a GitHub repository (default branch)
+router.get('/github/commits/:repoUrl', async (req, res) => {
+  try {
+    const { repoUrl } = req.params;
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    
+    if (!token) {
+      return res.status(401).json({ error: 'No token provided' });
+    }
+
+    // Extract owner and repo from the URL
+    // Expected format: https://github.com/owner/repo
+    const urlMatch = repoUrl.match(/https:\/\/github\.com\/([^\/]+)\/([^\/]+)/);
+    if (!urlMatch) {
+      return res.status(400).json({ error: 'Invalid GitHub repository URL' });
+    }
+
+    const [, owner, repo] = urlMatch;
+    
+    // Fetch commits from GitHub API (default branch)
+    const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/commits?per_page=5`, {
+      headers: {
+        'Authorization': `token ${process.env.GITHUB_ACCESS_TOKEN}`,
+        'Accept': 'application/vnd.github.v3+json'
+      }
+    });
+
+    if (!response.ok) {
+      if (response.status === 404) {
+        return res.status(404).json({ error: 'Repository not found or access denied' });
+      }
+      throw new Error(`GitHub API error: ${response.status}`);
+    }
+
+    const commits = await response.json();
+    const formattedCommits = commits.map(commit => ({
+      sha: commit.sha.substring(0, 7),
+      message: commit.commit.message,
+      author: commit.commit.author.name,
+      date: commit.commit.author.date,
+      url: commit.html_url
+    }));
+
+    res.json({ commits: formattedCommits });
+  } catch (error) {
+    console.error('Error fetching GitHub commits:', error);
+    res.status(500).json({ 
+      error: 'Failed to fetch repository commits',
+      commits: []
     });
   }
 });
