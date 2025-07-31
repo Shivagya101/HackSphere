@@ -329,7 +329,7 @@ function Home() {
                   setPasswordError('');
                 }}
                 placeholder="Enter a password for your room"
-                className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-black placeholder-gray-600"
               />
               {passwordError && (
                 <p className="text-red-500 text-sm mt-1">{passwordError}</p>
@@ -431,7 +431,7 @@ function Home() {
                   <select
                     value={selectedRepo}
                     onChange={(e) => setSelectedRepo(e.target.value)}
-                    className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-black"
                   >
                     <option value="">Choose a repository...</option>
                     {githubRepos.map((repo) => (
@@ -453,7 +453,7 @@ function Home() {
                     value={newRepoName}
                     onChange={(e) => setNewRepoName(e.target.value)}
                     placeholder="my-hackathon-project"
-                    className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-black placeholder-gray-600"
                   />
                   <p className="text-xs text-gray-500 mt-1">
                     Only lowercase letters, numbers, and hyphens allowed
@@ -469,7 +469,7 @@ function Home() {
                     value={newRepoDescription}
                     onChange={(e) => setNewRepoDescription(e.target.value)}
                     placeholder="A brief description of your project"
-                    className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-black placeholder-gray-600"
                   />
                 </div>
                 
@@ -527,7 +527,7 @@ function Home() {
                   value={customRepoUrl}
                   onChange={(e) => setCustomRepoUrl(e.target.value)}
                   placeholder="https://github.com/username/repository"
-                  className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-black placeholder-gray-600"
                 />
               </div>
             )}
@@ -620,7 +620,7 @@ function Home() {
                   type="text"
                   value={createdRoomId}
                   readOnly
-                  className="flex-1 p-3 border rounded-lg bg-white font-mono text-lg"
+                  className="flex-1 p-3 border rounded-lg bg-white font-mono text-lg text-black"
                 />
                 <button
                   onClick={copyRoomId}
@@ -690,14 +690,14 @@ function Home() {
                   value={roomId}
                   onChange={(e) => setRoomId(e.target.value)}
                   placeholder="Enter Room ID"
-                  className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-black placeholder-gray-600"
                 />
                 <input
                   type="password"
                   value={roomPassword}
                   onChange={(e) => setRoomPassword(e.target.value)}
                   placeholder="Enter room password"
-                  className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-black placeholder-gray-600"
                 />
                 <button
                   type="submit"

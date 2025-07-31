@@ -42,7 +42,7 @@ const Register = () => {
                 name="name"
                 type="text"
                 required
-                className="appearance-none rounded-lg relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                className="appearance-none rounded-lg relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-600 text-black focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
                 placeholder="Full Name"
                 value={formData.name}
                 onChange={handleChange}
@@ -57,7 +57,7 @@ const Register = () => {
                 name="email"
                 type="email"
                 required
-                className="appearance-none rounded-lg relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                className="appearance-none rounded-lg relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-600 text-black focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
                 placeholder="Email address"
                 value={formData.email}
                 onChange={handleChange}
@@ -72,7 +72,7 @@ const Register = () => {
                 name="password"
                 type="password"
                 required
-                className="appearance-none rounded-lg relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                className="appearance-none rounded-lg relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-600 text-black focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
                 placeholder="Password"
                 value={formData.password}
                 onChange={handleChange}
@@ -87,7 +87,7 @@ const Register = () => {
                 name="confirmPassword"
                 type="password"
                 required
-                className="appearance-none rounded-lg relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                className="appearance-none rounded-lg relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-600 text-black focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
                 placeholder="Confirm Password"
                 value={formData.confirmPassword}
                 onChange={handleChange}
