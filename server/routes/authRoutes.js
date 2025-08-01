@@ -25,7 +25,7 @@ router.get(
 
       // Redirect to frontend with token
       const frontendUrl = process.env.FRONTEND_URL;
-      res.redirect(`${frontendUrl}/auth/callback?token=${token}`);
+      res.redirect(`${frontendUrl}/#/auth/callback?token=${token}`);
     } catch (error) {
       console.error("Auth callback error:", error);
       const frontendUrl = process.env.FRONTEND_URL;
