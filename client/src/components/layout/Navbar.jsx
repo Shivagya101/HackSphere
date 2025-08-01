@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
+import { BACKEND_URL } from "../../config.js";
 
 const Navbar = () => {
   const [user, setUser] = useState(null);
@@ -10,7 +11,7 @@ const Navbar = () => {
       try {
         const token = localStorage.getItem("authToken");
         if (token) {
-          const response = await fetch("http://localhost:3000/auth/me", {
+          const response = await fetch(`${BACKEND_URL}/auth/me`, {
             headers: {
               Authorization: `Bearer ${token}`,
             },

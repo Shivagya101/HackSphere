@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import socket from "../socket";
+import { BACKEND_URL } from "../config.js";
 
 function Room() {
   const { roomId } = useParams();
@@ -37,7 +38,7 @@ function Room() {
       const token = localStorage.getItem("authToken");
       if (!token) return;
 
-      const response = await fetch("http://localhost:3000/auth/me", {
+      const response = await fetch(`${BACKEND_URL}/auth/me`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -48,7 +49,7 @@ function Room() {
         console.log("Saving room to history:", { roomId, userId: userData.id });
 
         // Call the backend to save room to history
-        await fetch("http://localhost:3000/room/join", {
+        await fetch(`${BACKEND_URL}/room/join`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -67,9 +68,7 @@ function Room() {
 
   const checkRoomExists = async () => {
     try {
-      const response = await fetch(
-        `http://localhost:3000/room/${roomId}/exists`
-      );
+      const response = await fetch(`${BACKEND_URL}/room/${roomId}/exists`);
       if (!response.ok) {
         throw new Error("Failed to check room status");
       }
@@ -86,7 +85,7 @@ function Room() {
       console.log("Fetching room data directly for:", roomId);
 
       // Fetch room information
-      const roomResponse = await fetch(`http://localhost:3000/room/${roomId}`);
+      const roomResponse = await fetch(`${BACKEND_URL}/room/${roomId}`);
       let roomData = null;
       if (roomResponse.ok) {
         roomData = await roomResponse.json();
@@ -95,9 +94,7 @@ function Room() {
       }
 
       // Fetch messages
-      const messagesResponse = await fetch(
-        `http://localhost:3000/messages/${roomId}`
-      );
+      const messagesResponse = await fetch(`${BACKEND_URL}/messages/${roomId}`);
       if (messagesResponse.ok) {
         const messages = await messagesResponse.json();
         console.log("Fetched messages:", messages.length);
@@ -105,9 +102,7 @@ function Room() {
       }
 
       // Fetch notes
-      const notesResponse = await fetch(
-        `http://localhost:3000/notes/${roomId}`
-      );
+      const notesResponse = await fetch(`${BACKEND_URL}/notes/${roomId}`);
       if (notesResponse.ok) {
         const notes = await notesResponse.json();
         console.log("Fetched notes:", notes.length);
@@ -115,9 +110,7 @@ function Room() {
       }
 
       // Fetch files
-      const filesResponse = await fetch(
-        `http://localhost:3000/files/${roomId}`
-      );
+      const filesResponse = await fetch(`${BACKEND_URL}/files/${roomId}`);
       if (filesResponse.ok) {
         const files = await filesResponse.json();
         console.log("Fetched files:", files.length);
@@ -434,7 +427,7 @@ function Room() {
       console.log("Encoded URL:", encodedUrl);
 
       const response = await fetch(
-        `http://localhost:3000/github/branches/${encodedUrl}`,
+        `${BACKEND_URL}/github/branches/${encodedUrl}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -483,7 +476,7 @@ function Room() {
       console.log("Encoded URL:", encodedUrl);
 
       const response = await fetch(
-        `http://localhost:3000/github/commits/${encodedUrl}/${branchParam}`,
+        `${BACKEND_URL}/github/commits/${encodedUrl}/${branchParam}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -530,17 +523,14 @@ function Room() {
   const handleFileDownload = async (fileId, originalName) => {
     try {
       // file download URL
-      const urlResponse = await fetch(
-        `http://localhost:3000/file/url/${fileId}`,
-        {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            "X-Room-ID": roomId,
-            "X-Username": username,
-          },
-        }
-      );
+      const urlResponse = await fetch(`${BACKEND_URL}/file/url/${fileId}`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Room-ID": roomId,
+          "X-Username": username,
+        },
+      });
 
       if (!urlResponse.ok) {
         const errorData = await urlResponse.json().catch(() => ({
@@ -557,16 +547,13 @@ function Room() {
       const { downloadUrl } = await urlResponse.json();
 
       // downloading
-      const downloadResponse = await fetch(
-        `http://localhost:3000${downloadUrl}`,
-        {
-          method: "GET",
-          headers: {
-            "X-Room-ID": roomId,
-            "X-Username": username,
-          },
-        }
-      );
+      const downloadResponse = await fetch(`${BACKEND_URL}${downloadUrl}`, {
+        method: "GET",
+        headers: {
+          "X-Room-ID": roomId,
+          "X-Username": username,
+        },
+      });
 
       if (!downloadResponse.ok) {
         const errorData = await downloadResponse.json().catch(() => ({
@@ -657,7 +644,7 @@ function Room() {
         username,
       });
 
-      const response = await fetch("http://localhost:3000/upload", {
+      const response = await fetch(`${BACKEND_URL}/upload`, {
         method: "POST",
         headers: {
           "X-Room-ID": roomId,
@@ -733,7 +720,7 @@ function Room() {
       console.log("Attempting to delete file:", fileId, "by user:", username);
 
       const response = await fetch(
-        `http://localhost:3000/file/${fileId}?username=${encodeURIComponent(
+        `${BACKEND_URL}/file/${fileId}?username=${encodeURIComponent(
           username
         )}`,
         {
@@ -1255,54 +1242,40 @@ function Room() {
               )}
             </div>
             <div className="flex-1 overflow-y-auto bg-white/5 rounded-xl p-3 border border-white/10">
-              {files.map((file) => (
-                <div
-                  key={`file-${file._id || file.id}`}
-                  className="bg-white/10 rounded-lg p-3 relative group mb-3 border border-white/20"
-                >
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1 mr-4">
-                      <div className="font-medium text-blue-300 truncate text-sm">
-                        {file.originalName}
+              {console.log(
+                "Files array:",
+                files,
+                "Files length:",
+                files.length
+              )}
+              {files.length === 0 ? (
+                <div className="text-center text-gray-500 py-8">
+                  <p>No files uploaded yet</p>
+                </div>
+              ) : (
+                files.map((file, index) => (
+                  <div
+                    key={`file-${file._id || file.id || index}`}
+                    className="bg-white/10 rounded-lg p-4 relative group mb-3 border border-white/20 overflow-hidden"
+                  >
+                    <div className="flex justify-between items-start gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-black text-sm break-words">
+                          {file.originalName}
+                        </div>
+                        <div className="text-xs text-gray-700 mt-1 break-words">
+                          Uploaded by {file.uploadedBy} •{" "}
+                          {formatFileSize(file.size)} •{" "}
+                          {formatTimestamp(file.uploadDate)}
+                        </div>
                       </div>
-                      <div className="text-xs text-slate-400">
-                        Uploaded by {file.uploadedBy} •{" "}
-                        {formatFileSize(file.size)} •{" "}
-                        {formatTimestamp(file.uploadDate)}
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <button
-                        onClick={() =>
-                          handleFileDownload(file._id, file.originalName)
-                        }
-                        className="text-blue-400 hover:text-blue-300 transition-colors"
-                        title="Download"
-                      >
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          className="h-5 w-5"
-                          viewBox="0 0 20 20"
-                          fill="currentColor"
-                        >
-                          <path
-                            fillRule="evenodd"
-                            d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z"
-                            clipRule="evenodd"
-                          />
-                        </svg>
-                      </button>
-                      {file.uploadedBy === username && (
+                      <div className="flex items-center space-x-2 flex-shrink-0">
                         <button
-                          onClick={() => {
-                            if (!file._id && !file.id) {
-                              alert("Invalid file ID");
-                              return;
-                            }
-                            handleFileDelete(file._id || file.id);
-                          }}
-                          className="text-red-400 hover:text-red-300 transition-colors"
-                          title="Delete"
+                          onClick={() =>
+                            handleFileDownload(file._id, file.originalName)
+                          }
+                          className="text-blue-400 hover:text-blue-300 transition-colors"
+                          title="Download"
                         >
                           <svg
                             xmlns="http://www.w3.org/2000/svg"
@@ -1312,16 +1285,42 @@ function Room() {
                           >
                             <path
                               fillRule="evenodd"
-                              d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z"
+                              d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z"
                               clipRule="evenodd"
                             />
                           </svg>
                         </button>
-                      )}
+                        {file.uploadedBy === username && (
+                          <button
+                            onClick={() => {
+                              if (!file._id && !file.id) {
+                                alert("Invalid file ID");
+                                return;
+                              }
+                              handleFileDelete(file._id || file.id);
+                            }}
+                            className="text-red-400 hover:text-red-300 transition-colors"
+                            title="Delete"
+                          >
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              className="h-5 w-5"
+                              viewBox="0 0 20 20"
+                              fill="currentColor"
+                            >
+                              <path
+                                fillRule="evenodd"
+                                d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z"
+                                clipRule="evenodd"
+                              />
+                            </svg>
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </div>
         </div>
