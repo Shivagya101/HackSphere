@@ -24,14 +24,12 @@ router.get(
       );
 
       // Redirect to frontend with token
-      res.redirect(
-        `https://hack-sphere-zeta.vercel.app/auth/callback?token=${token}`
-      );
+      const frontendUrl = process.env.FRONTEND_URL;
+      res.redirect(`${frontendUrl}/auth/callback?token=${token}`);
     } catch (error) {
       console.error("Auth callback error:", error);
-      res.redirect(
-        "https://hack-sphere-zeta.vercel.app/login?error=auth_failed"
-      );
+      const frontendUrl = process.env.FRONTEND_URL;
+      res.redirect(`${frontendUrl}/login?error=auth_failed`);
     }
   }
 );
