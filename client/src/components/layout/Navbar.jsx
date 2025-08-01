@@ -60,7 +60,7 @@ const Navbar = () => {
 
   const handleLogout = () => {
     localStorage.removeItem("authToken");
-    setUser(null);
+    setUser(null);``
     // Trigger auth state change event
     window.dispatchEvent(new Event("authStateChanged"));
     window.location.href = "/";

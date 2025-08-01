@@ -1,81 +1,85 @@
-# Environment Setup Guide
+# Backend Environment Setup
 
-To enable the GitHub repository feature, you need to set up the following environment variables in your `server/.env` file:
+## Environment Variables
 
-## Required Environment Variables
-
-### 1. GitHub OAuth Configuration
-```
-GITHUB_CLIENT_ID=your_github_client_id_here
-GITHUB_CLIENT_SECRET=your_github_client_secret_here
-```
-
-**How to get these:**
-1. Go to GitHub Settings > Developer settings > OAuth Apps
-2. Create a new OAuth App
-3. Set the Authorization callback URL to: `http://localhost:3000/auth/github/callback`
-4. Copy the Client ID and Client Secret
-
-### 2. GitHub Personal Access Token
-```
-GITHUB_ACCESS_TOKEN=your_github_personal_access_token_here
-```
-
-**How to get this:**
-1. Go to GitHub Settings > Developer settings > Personal access tokens > Tokens (classic)
-2. Generate a new token with the following scopes:
-   - `repo` (to access private repositories)
-   - `user` (to access user information)
-3. Copy the generated token
-
-### 3. JWT Secret
-```
-JWT_SECRET=your_jwt_secret_here
-```
-
-**How to generate:**
-- Use a secure random string (at least 32 characters)
-- You can generate one using: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`
-
-### 4. Database Configuration
-```
-MONGODB_URI=mongodb://localhost:27017/hacksphere
-```
-
-### 5. Server Configuration
-```
-PORT=3000
-```
-
-## Complete .env File Example
-
-Create a file named `.env` in the `server` directory with the following content:
+The backend now uses environment variables for configuration. Create a `.env` file in the `server` directory with the following variables:
 
 ```env
-# GitHub OAuth Configuration
-GITHUB_CLIENT_ID=your_github_client_id_here
-GITHUB_CLIENT_SECRET=your_github_client_secret_here
-GITHUB_ACCESS_TOKEN=your_github_personal_access_token_here
+# Database Configuration
+MONGO_URI=your_mongodb_connection_string
 
 # JWT Configuration
-JWT_SECRET=your_jwt_secret_here
+JWT_SECRET=your_jwt_secret_key
 
-# Database Configuration
-MONGODB_URI=mongodb://localhost:27017/hacksphere
+# GitHub OAuth Configuration
+GITHUB_CLIENT_ID=your_github_client_id
+GITHUB_CLIENT_SECRET=your_github_client_secret
+GITHUB_ACCESS_TOKEN=your_github_access_token
 
 # Server Configuration
 PORT=3000
+BACKEND_URL=http://localhost:3000
+
+# Frontend Configuration
+FRONTEND_URL=http://localhost:5173
 ```
 
-## Important Notes
+## Configuration Details
 
-1. **Never commit your .env file** - it should be in your .gitignore
-2. **Keep your tokens secure** - don't share them publicly
-3. **The GitHub access token** should have the necessary permissions to read repositories
-4. **For production**, use environment-specific values and secure token storage
+### Database
 
-## Troubleshooting
+- `MONGO_URI`: Your MongoDB connection string (already configured)
 
-- If GitHub repository fetching fails, users can still enter repository URLs manually
-- Make sure MongoDB is running if you're using the local database
-- Check that all environment variables are properly set before starting the server 
+### Authentication
+
+- `JWT_SECRET`: Secret key for JWT token signing
+- `GITHUB_CLIENT_ID`: GitHub OAuth app client ID
+- `GITHUB_CLIENT_SECRET`: GitHub OAuth app client secret
+- `GITHUB_ACCESS_TOKEN`: GitHub personal access token for API calls
+
+### Server Configuration
+
+- `PORT`: Server port (default: 3000)
+- `BACKEND_URL`: Your backend server URL (used for GitHub OAuth callback)
+
+### Frontend Configuration
+
+- `FRONTEND_URL`: Your frontend application URL (used for redirects and CORS)
+
+## What Was Fixed
+
+The following hardcoded localhost URLs have been replaced with environment variables:
+
+1. **`server/routes/authRoutes.js`**:
+
+   - Authentication redirects now use `FRONTEND_URL`
+
+2. **`server/index.js`**:
+
+   - CORS configuration now uses `FRONTEND_URL`
+   - Socket.IO CORS now uses `FRONTEND_URL`
+
+3. **`server/config/passport.js`**:
+   - GitHub OAuth callback URL now uses `BACKEND_URL`
+
+## Development vs Production
+
+**Development:**
+
+```env
+BACKEND_URL=http://localhost:3000
+FRONTEND_URL=http://localhost:5173
+```
+
+**Production:**
+
+```env
+BACKEND_URL=https://your-backend-domain.com
+FRONTEND_URL=https://your-frontend-domain.com
+```
+
+## Files Updated
+
+- `server/routes/authRoutes.js` - Updated to use `FRONTEND_URL`
+- `server/index.js` - Updated to use `FRONTEND_URL` for CORS
+- `server/config/passport.js` - Updated to use `BACKEND_URL` for OAuth callback

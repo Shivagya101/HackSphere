@@ -24,10 +24,14 @@ router.get(
       );
 
       // Redirect to frontend with token
-      res.redirect(`http://localhost:5173/auth/callback?token=${token}`);
+      res.redirect(
+        `https://hack-sphere-zeta.vercel.app/auth/callback?token=${token}`
+      );
     } catch (error) {
       console.error("Auth callback error:", error);
-      res.redirect("http://localhost:5173/login?error=auth_failed");
+      res.redirect(
+        "https://hack-sphere-zeta.vercel.app/login?error=auth_failed"
+      );
     }
   }
 );
