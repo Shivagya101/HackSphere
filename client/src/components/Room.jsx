@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useRef, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import socket from "../socket";
-import { BACKEND_URL } from "../config.js";
 
 function Room() {
   const { roomId } = useParams();
@@ -38,7 +37,7 @@ function Room() {
       const token = localStorage.getItem("authToken");
       if (!token) return;
 
-      const response = await fetch(`${BACKEND_URL}/auth/me`, {
+      const response = await fetch("https://hacksphere.onrender.com/auth/me", {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -49,7 +48,7 @@ function Room() {
         console.log("Saving room to history:", { roomId, userId: userData.id });
 
         // Call the backend to save room to history
-        await fetch(`${BACKEND_URL}/room/join`, {
+        await fetch("https://hacksphere.onrender.com/room/join", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -68,7 +67,9 @@ function Room() {
 
   const checkRoomExists = async () => {
     try {
-      const response = await fetch(`${BACKEND_URL}/room/${roomId}/exists`);
+      const response = await fetch(
+        `https://hacksphere.onrender.com/room/${roomId}/exists`
+      );
       if (!response.ok) {
         throw new Error("Failed to check room status");
       }
@@ -85,7 +86,9 @@ function Room() {
       console.log("Fetching room data directly for:", roomId);
 
       // Fetch room information
-      const roomResponse = await fetch(`${BACKEND_URL}/room/${roomId}`);
+      const roomResponse = await fetch(
+        `https://hacksphere.onrender.com/room/${roomId}`
+      );
       let roomData = null;
       if (roomResponse.ok) {
         roomData = await roomResponse.json();
@@ -94,7 +97,9 @@ function Room() {
       }
 
       // Fetch messages
-      const messagesResponse = await fetch(`${BACKEND_URL}/messages/${roomId}`);
+      const messagesResponse = await fetch(
+        `https://hacksphere.onrender.com/messages/${roomId}`
+      );
       if (messagesResponse.ok) {
         const messages = await messagesResponse.json();
         console.log("Fetched messages:", messages.length);
@@ -102,7 +107,9 @@ function Room() {
       }
 
       // Fetch notes
-      const notesResponse = await fetch(`${BACKEND_URL}/notes/${roomId}`);
+      const notesResponse = await fetch(
+        `https://hacksphere.onrender.com/notes/${roomId}`
+      );
       if (notesResponse.ok) {
         const notes = await notesResponse.json();
         console.log("Fetched notes:", notes.length);
@@ -110,7 +117,9 @@ function Room() {
       }
 
       // Fetch files
-      const filesResponse = await fetch(`${BACKEND_URL}/files/${roomId}`);
+      const filesResponse = await fetch(
+        `https://hacksphere.onrender.com/files/${roomId}`
+      );
       if (filesResponse.ok) {
         const files = await filesResponse.json();
         console.log("Fetched files:", files.length);
@@ -427,7 +436,7 @@ function Room() {
       console.log("Encoded URL:", encodedUrl);
 
       const response = await fetch(
-        `${BACKEND_URL}/github/branches/${encodedUrl}`,
+        `https://hacksphere.onrender.com/github/branches/${encodedUrl}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -476,7 +485,7 @@ function Room() {
       console.log("Encoded URL:", encodedUrl);
 
       const response = await fetch(
-        `${BACKEND_URL}/github/commits/${encodedUrl}/${branchParam}`,
+        `https://hacksphere.onrender.com/github/commits/${encodedUrl}/${branchParam}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -523,14 +532,17 @@ function Room() {
   const handleFileDownload = async (fileId, originalName) => {
     try {
       // file download URL
-      const urlResponse = await fetch(`${BACKEND_URL}/file/url/${fileId}`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Room-ID": roomId,
-          "X-Username": username,
-        },
-      });
+      const urlResponse = await fetch(
+        `https://hacksphere.onrender.com/file/url/${fileId}`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Room-ID": roomId,
+            "X-Username": username,
+          },
+        }
+      );
 
       if (!urlResponse.ok) {
         const errorData = await urlResponse.json().catch(() => ({
@@ -547,13 +559,16 @@ function Room() {
       const { downloadUrl } = await urlResponse.json();
 
       // downloading
-      const downloadResponse = await fetch(`${BACKEND_URL}${downloadUrl}`, {
-        method: "GET",
-        headers: {
-          "X-Room-ID": roomId,
-          "X-Username": username,
-        },
-      });
+      const downloadResponse = await fetch(
+        `https://hacksphere.onrender.com${downloadUrl}`,
+        {
+          method: "GET",
+          headers: {
+            "X-Room-ID": roomId,
+            "X-Username": username,
+          },
+        }
+      );
 
       if (!downloadResponse.ok) {
         const errorData = await downloadResponse.json().catch(() => ({
@@ -644,7 +659,7 @@ function Room() {
         username,
       });
 
-      const response = await fetch(`${BACKEND_URL}/upload`, {
+      const response = await fetch("https://hacksphere.onrender.com/upload", {
         method: "POST",
         headers: {
           "X-Room-ID": roomId,
@@ -720,7 +735,7 @@ function Room() {
       console.log("Attempting to delete file:", fileId, "by user:", username);
 
       const response = await fetch(
-        `${BACKEND_URL}/file/${fileId}?username=${encodeURIComponent(
+        `https://hacksphere.onrender.com/file/${fileId}?username=${encodeURIComponent(
           username
         )}`,
         {
@@ -1169,78 +1184,6 @@ function Room() {
                 Add Note
               </button>
             </form>
-            <div className="flex-1 overflow-y-auto bg-white/5 rounded-xl p-3 border border-white/10">
-              {notes.map((note) => (
-                <div
-                  key={note._id}
-                  className="bg-white/10 rounded-lg p-3 relative group mb-3 border border-white/20"
-                >
-                  <div className="flex justify-between items-start mb-2">
-                    <span className="font-semibold text-blue-300 text-sm">
-                      {note.username}
-                    </span>
-                    <span className="text-xs text-slate-400">
-                      {formatTimestamp(note.timestamp)}
-                    </span>
-                  </div>
-                  <p className="text-white whitespace-pre-wrap text-sm">
-                    {note.content}
-                  </p>
-                  {note.username === username && (
-                    <button
-                      onClick={() => handleDeleteNote(note._id)}
-                      className="absolute top-2 right-2 text-red-400 opacity-0 group-hover:opacity-100 transition-opacity hover:text-red-300"
-                    >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="h-4 w-4"
-                        viewBox="0 0 20 20"
-                        fill="currentColor"
-                      >
-                        <path
-                          fillRule="evenodd"
-                          d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Files Section */}
-          <div className="bg-white/10 backdrop-blur-md rounded-2xl shadow-xl p-6 flex flex-col h-[500px] border border-white/10">
-            <h2 className="text-xl font-semibold mb-4 text-yellow-200 font-mono tracking-wider">
-              📁 Files
-            </h2>
-            <div className="mb-4">
-              <label className="block w-full">
-                <span className="sr-only">Choose file</span>
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  onChange={handleFileUpload}
-                  className="block w-full text-sm text-black
-                    file:mr-4 file:py-2 file:px-4
-                    file:rounded-lg file:border-0
-                    file:text-sm file:font-medium
-                    file:bg-blue-500 file:text-white
-                    hover:file:bg-blue-600 file:transition-colors"
-                />
-              </label>
-              {uploadProgress !== null && (
-                <div className="mt-3">
-                  <div className="h-2 bg-blue-200/20 rounded-full">
-                    <div
-                      className="h-2 bg-blue-500 rounded-full transition-all duration-300"
-                      style={{ width: `${uploadProgress}%` }}
-                    ></div>
-                  </div>
-                </div>
-              )}
-            </div>
             <div className="flex-1 overflow-y-auto bg-white/5 rounded-xl p-3 border border-white/10">
               {console.log(
                 "Files array:",

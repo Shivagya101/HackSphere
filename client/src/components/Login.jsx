@@ -1,9 +1,8 @@
 import React from "react";
-import { BACKEND_URL } from "../config.js";
 
 const Login = () => {
   const handleGitHubLogin = () => {
-    window.location.href = `${BACKEND_URL}/auth/github`;
+    window.location.href = "https://hacksphere.onrender.com/auth/github";
   };
 
   return (

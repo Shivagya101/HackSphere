@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import socket from "../socket";
-import { BACKEND_URL } from "../config.js";
 
 function Home() {
   const [roomId, setRoomId] = useState("");
@@ -36,11 +35,14 @@ function Home() {
       try {
         const token = localStorage.getItem("authToken");
         if (token) {
-          const response = await fetch(`${BACKEND_URL}/auth/me`, {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          });
+          const response = await fetch(
+            "https://hacksphere.onrender.com/auth/me",
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            }
+          );
           if (response.ok) {
             const userData = await response.json();
             setUser(userData);
@@ -73,11 +75,14 @@ function Home() {
     try {
       setLoadingRepos(true);
       const token = localStorage.getItem("authToken");
-      const response = await fetch(`${BACKEND_URL}/github/repos`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const response = await fetch(
+        "https://hacksphere.onrender.com/github/repos",
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
 
       if (response.ok) {
         const data = await response.json();
@@ -108,18 +113,21 @@ function Home() {
     try {
       setCreatingRepo(true);
       const token = localStorage.getItem("authToken");
-      const response = await fetch(`${BACKEND_URL}/github/create-repo`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          repoName: newRepoName.trim(),
-          description: newRepoDescription.trim(),
-          isPrivate: newRepoPrivate,
-        }),
-      });
+      const response = await fetch(
+        "https://hacksphere.onrender.com/github/create-repo",
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            repoName: newRepoName.trim(),
+            description: newRepoDescription.trim(),
+            isPrivate: newRepoPrivate,
+          }),
+        }
+      );
 
       if (response.ok) {
         const data = await response.json();
@@ -177,18 +185,21 @@ function Home() {
       });
 
       // Create room on backend
-      const response = await fetch(`${BACKEND_URL}/room/create`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          roomId: createdRoomId,
-          password: password,
-          createdBy: user?.username || "unknown",
-          githubRepo: githubRepo,
-        }),
-      });
+      const response = await fetch(
+        "https://hacksphere.onrender.com/room/create",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            roomId: createdRoomId,
+            password: password,
+            createdBy: user?.username || "unknown",
+            githubRepo: githubRepo,
+          }),
+        }
+      );
 
       console.log("Response status:", response.status);
       const data = await response.json();
@@ -218,7 +229,9 @@ function Home() {
 
   const checkRoomExists = async (roomId) => {
     try {
-      const response = await fetch(`${BACKEND_URL}/room/${roomId}/exists`);
+      const response = await fetch(
+        `https://hacksphere.onrender.com/room/${roomId}/exists`
+      );
       if (!response.ok) {
         throw new Error("Failed to check room status");
       }
@@ -244,17 +257,20 @@ function Home() {
         userId: user?.id,
       });
 
-      const response = await fetch(`${BACKEND_URL}/room/join`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          roomId: roomId.trim(),
-          password: roomPassword.trim(),
-          userId: user?.id,
-        }),
-      });
+      const response = await fetch(
+        "https://hacksphere.onrender.com/room/join",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            roomId: roomId.trim(),
+            password: roomPassword.trim(),
+            userId: user?.id,
+          }),
+        }
+      );
 
       const data = await response.json();
 

@@ -1,7 +1,6 @@
 import { io } from "socket.io-client";
-import { SOCKET_URL } from "./config.js";
 
-const socket = io(SOCKET_URL, {
+const socket = io("https://hacksphere.onrender.com", {
   reconnection: true,
   reconnectionAttempts: 5,
   reconnectionDelay: 1000,

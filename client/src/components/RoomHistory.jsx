@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { BACKEND_URL } from "../config.js";
 
 function RoomHistory() {
   const [user, setUser] = useState(null);
@@ -13,11 +12,14 @@ function RoomHistory() {
       try {
         const token = localStorage.getItem("authToken");
         if (token) {
-          const response = await fetch(`${BACKEND_URL}/auth/me`, {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          });
+          const response = await fetch(
+            "https://hacksphere.onrender.com/auth/me",
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            }
+          );
           if (response.ok) {
             const userData = await response.json();
             setUser(userData);
@@ -44,7 +46,9 @@ function RoomHistory() {
   const fetchRoomHistory = async (userId) => {
     try {
       console.log("Fetching room history for user:", userId);
-      const response = await fetch(`${BACKEND_URL}/user/${userId}/rooms`);
+      const response = await fetch(
+        `https://hacksphere.onrender.com/user/${userId}/rooms`
+      );
       console.log("Room history response status:", response.status);
       if (response.ok) {
         const data = await response.json();
@@ -72,7 +76,7 @@ function RoomHistory() {
   const deleteRoomFromHistory = async (roomId) => {
     try {
       const response = await fetch(
-        `${BACKEND_URL}/user/${user.id}/rooms/${roomId}`,
+        `https://hacksphere.onrender.com/user/${user.id}/rooms/${roomId}`,
         {
           method: "DELETE",
           headers: {

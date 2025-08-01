@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { BACKEND_URL } from "../../config.js";
 
 const Navbar = () => {
   const [user, setUser] = useState(null);
@@ -11,11 +10,14 @@ const Navbar = () => {
       try {
         const token = localStorage.getItem("authToken");
         if (token) {
-          const response = await fetch(`${BACKEND_URL}/auth/me`, {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          });
+          const response = await fetch(
+            "https://hacksphere.onrender.com/auth/me",
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            }
+          );
           if (response.ok) {
             const userData = await response.json();
             setUser(userData);
@@ -60,7 +62,8 @@ const Navbar = () => {
 
   const handleLogout = () => {
     localStorage.removeItem("authToken");
-    setUser(null);``
+    setUser(null);
+    ``;
     // Trigger auth state change event
     window.dispatchEvent(new Event("authStateChanged"));
     window.location.href = "/";
